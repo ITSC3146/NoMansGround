@@ -11,6 +11,12 @@ public class NewGridSystem : MonoBehaviour
     public Vector2Int goalCell = new Vector2Int(19, 19);
     public LayerMask groundMask = ~0;   // set to your ground layer in the Inspector
 
+    [Header("Visualization")]
+    public bool showGizmos = true;
+    public bool showCostHeatmap = true;
+    public bool showDistanceLabels = true;
+    public int maxVisualCost = 10;      // Cost value that maps to the strongest heat color
+
     private GameObject ghostObject;
     private GridData grid;
     private FlowField flowField;
@@ -76,7 +82,7 @@ public class NewGridSystem : MonoBehaviour
         Instantiate(objectToPlace, CellToWorld(cell), Quaternion.identity);
     }
 
-        void CreateGhostObject()
+    void CreateGhostObject()
     {
         if (ghostObject == null)
         {
@@ -103,7 +109,7 @@ public class NewGridSystem : MonoBehaviour
         }
     }
 
-        void SetGhostColor(Color color)
+    void SetGhostColor(Color color)
     {
         Renderer[] renderers = ghostObject.GetComponentsInChildren<Renderer>();
 
@@ -111,16 +117,10 @@ public class NewGridSystem : MonoBehaviour
         {
             Material mat = renderer.material;
             mat.color = color;
-
         }
     }
 
-
-
-
-    //
-
-    public bool showGizmos = true;
+    //Visualization for demonstrations purposes (Completely Generated)
 
     private void OnDrawGizmos()
     {
@@ -132,16 +132,38 @@ public class NewGridSystem : MonoBehaviour
             {
                 var cell = new Vector2Int(x, y);
                 Vector3 center = CellToWorld(cell) + Vector3.up * 0.05f;
+                int cost = grid.GetCost(cell);
 
-                // Cell squares
+                // Cost heatmap tile
+                if (showCostHeatmap && !grid.IsBlocked(cell) && cost > 1)
+                {
+                    float t = Mathf.Clamp01((float)(cost - 1) / Mathf.Max(1, maxVisualCost - 1));
+                    // Transitions from soft amber (low-mid cost) to deep crimson (high cost)
+                    Color heatColor = Color.Lerp(new Color(1f, 0.75f, 0.1f, 0.35f), new Color(0.85f, 0.15f, 0.1f, 0.65f), t);
+                    Gizmos.color = heatColor;
+                    Gizmos.DrawCube(center, new Vector3(gridSize * 0.92f, 0.01f, gridSize * 0.92f));
+                }
+
+                // Cell grid outlines
                 if (cell == spawnCell)
                     Gizmos.color = Color.green;
                 else if (cell == goalCell)
                     Gizmos.color = Color.blue;
                 else if (grid.IsBlocked(cell))
-                    Gizmos.color = new Color(1f, 0f, 0f, 0.5f);
+                {
+                    Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
+                    Gizmos.DrawCube(center, new Vector3(gridSize * 0.92f, 0.01f, gridSize * 0.92f));
+                    Gizmos.color = Color.red;
+                }
+                else if (cost > 1 && showCostHeatmap)
+                {
+                    float t = Mathf.Clamp01((float)(cost - 1) / Mathf.Max(1, maxVisualCost - 1));
+                    Gizmos.color = Color.Lerp(new Color(1f, 0.75f, 0.1f, 0.8f), new Color(1f, 0.3f, 0.2f, 0.9f), t);
+                }
                 else
+                {
                     Gizmos.color = new Color(1f, 1f, 1f, 0.15f);
+                }
 
                 Gizmos.DrawWireCube(center, new Vector3(gridSize, 0.01f, gridSize));
 
@@ -149,17 +171,22 @@ public class NewGridSystem : MonoBehaviour
                 if (grid.IsBlocked(cell) || !flowField.IsReachable(cell)) continue;
 
                 Vector2Int dir = flowField.GetDirection(cell);
-                if (dir == Vector2Int.zero) continue;
+                if (dir != Vector2Int.zero)
+                {
+                    Vector3 d = new Vector3(dir.x, 0f, dir.y) * gridSize * 0.35f;
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawLine(center - d, center + d);
+                    Gizmos.DrawSphere(center + d, gridSize * 0.07f);   // dot marks the arrow head
+                }
 
-                Vector3 d = new Vector3(dir.x, 0f, dir.y) * gridSize * 0.35f;
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawLine(center - d, center + d);
-                Gizmos.DrawSphere(center + d, gridSize * 0.07f);   // dot marks the arrow head
-
-    #if UNITY_EDITOR
-                UnityEditor.Handles.Label(center + Vector3.up * 0.1f,
-                    flowField.GetDistance(cell).ToString());
-    #endif
+#if UNITY_EDITOR
+                if (showDistanceLabels)
+                {
+                    int dist = flowField.GetDistance(cell / 10);
+                    string label = cost > 1 ? $"{dist}\n(c:{cost})" : dist.ToString();
+                    UnityEditor.Handles.Label(center + Vector3.up * 0.12f, label);
+                }
+#endif
             }
         }
     }
