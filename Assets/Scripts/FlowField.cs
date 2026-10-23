@@ -89,20 +89,31 @@ public class FlowField
             }
         }
 
+        //This BFS makes a grid essentially and searches through each "Square" in the grid
         for (int x = 0; x < grid.width; x++)
             for (int y = 0; y < grid.height; y++)
-            {
+            {   
+                //The initial Coordinate point is set to contain a Vector2Int of Zero so that it has an intial value for us to change
                 flow[x, y] = Vector2Int.zero;
+                //If we have have a variable that is outside the grid, skip it.
                 if (dist[x, y] <= 0) continue;
 
+                //Makes this coordinate into a cell
                 var cell = new Vector2Int(x, y);
+
+                //The Best in this case is set to the initial value we have in the dist[x,y] cell. This will be the distance this individual cell is from the goal
                 int best = dist[x, y];
+                //Think of it like a clock. We are going to check every neighbor we have and see what distance we get from it.
+
                 foreach (var d in Dirs)
                 {
                     var n = cell + d;
+                //We will compare this with the distance we get from the next neighbor by combining our cells distance and the neighbors distance.
+                //Whichever is lower we will take and move in that direction.
                     if (CanMove(cell, d) && dist[n.x, n.y] != -1 && dist[n.x, n.y] < best)
                     {
                         best = dist[n.x, n.y];
+                        //This is then stored into our array flow to give the arrow it should get. If we need the value we use the getDirection function.
                         flow[x, y] = d;
                     }
                 }
@@ -110,6 +121,8 @@ public class FlowField
     }
 
     public bool IsReachable(Vector2Int cell) => dist[cell.x, cell.y] != -1;
+
+    //Will grab the direction of the grid square.
     public Vector2Int GetDirection(Vector2Int cell) => flow[cell.x, cell.y];
 
     private bool CanMove(Vector2Int from, Vector2Int d)
