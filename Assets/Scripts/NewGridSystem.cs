@@ -19,7 +19,7 @@ public class NewGridSystem : MonoBehaviour
 
     private GameObject ghostObject;
     private GridData grid;
-    private FlowField flowField;
+    public FlowField flowField;
     private Vector2Int hoveredCell;
     private bool hasValidHover;
 
